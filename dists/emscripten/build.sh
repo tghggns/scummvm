@@ -35,6 +35,8 @@ LIBS_FOLDER="$DIST_FOLDER/libs"
 TASKS=()
 CONFIGURE_ARGS=()
 _bundle_games=()
+_games_dir=()
+_listen_all_interfaces=false
 _verbose=false
 EMSCRIPTEN_VERSION=$EMSDK_VERSION
 
@@ -47,10 +49,11 @@ Tasks:
   (space separated) List of tasks to run. See ./dists/emscripten/README.md for details.    
 
 Options:
-  -h, --help         print this help, then exit
-  --bundle-games=    comma-separated list of demos and freeware games to bundle. 
-  -v, --verbose          print all commands run by the script
-  --*                all other options are passed on to the configure script
+  -h, --help            print this help, then exit
+  --bundle-games=       comma-separated list of demos and freeware games to bundle. 
+  --games-directories=  comma-seperated list of directories containing games to bundle.
+  -v, --verbose         print all commands run by the script
+  --*                   all other options are passed on to the configure script
 "
 
 # parse inputs
@@ -60,6 +63,14 @@ for i in "$@"; do
     str="${i#*=}"
     _bundle_games="${str//,/ }"
     shift # past argument=value
+    ;;
+  --games-directories=*)
+    str="${i#*=}"
+    _games_dir="${str//,/ }"
+    shift
+    ;;
+  --listen-all-interfaces)
+    _listen_all_interfaces=true
     ;;
   -h | --help)
     echo "$usage"
@@ -299,6 +310,14 @@ if [[ "games" =~ $(echo ^\(${TASKS}\)$) || "build" =~ $(echo ^\(${TASKS}\)$) ]];
       find "${ROOT_FOLDER}/build-emscripten/games/${f%.zip}" -type f -exec chmod 0644 {} \;
     done
   fi
+
+  if [ -n "$_games_dir" ]; then
+    cd "${ROOT_FOLDER}/build-emscripten/games/"
+    for dir in $_games_dir; do
+      cp -r ${dir%/}/* .
+    done
+  fi
+
   cd "${ROOT_FOLDER}/build-emscripten/games/"
   "$EMSDK_NODE" "$DIST_FOLDER/build-make_http_index.js" >index.json
 fi
@@ -375,7 +394,10 @@ if [[ "run" =~ $(echo ^\(${TASKS}\)$) ]]; then
   cd "${ROOT_FOLDER}/build-emscripten/"
   # emrun doesn't support range requests. Once it will, we don't need node-static anymore
   # emrun --browser=chrome scummvm.html
-
+  a=127.0.0.1
+  if [[ "$_listen_all_interfaces" = true ]]; then
+    a=0.0.0.0
+  fi
   EMSDK_NPX=$(dirname $EMSDK_NODE)/npx
-  $EMSDK_NPX -p node-static static .
+  $EMSDK_NPX -p node-static static -a $a .
 fi
