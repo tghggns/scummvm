@@ -387,6 +387,19 @@ if [[ "add-games" =~ $(echo ^\(${TASKS}\)$) || "build" =~ $(echo ^\(${TASKS}\)$)
 fi
 
 #################################
+# Sync save folder
+#################################
+# if [[ "run" =~ $(echo ^\(${TASKS}\)$) ]]; then
+#   echo "Sync save files"
+#   if [[ ! -d "${ROOT_FOLDER}/build-emscripten/saves" ]]; then
+#     echo "Saves directory not found, creating"
+#     mkdir -p "${ROOT_FOLDER}/build-emscripten/saves"
+#   fi
+#   cd "${ROOT_FOLDER}/build-emscripten/saves"
+#   "$EMSDK_NODE" "$DIST_FOLDER/build-make_http_index.js" > index.json
+# fi
+
+#################################
 # Run Development Server
 #################################
 if [[ "run" =~ $(echo ^\(${TASKS}\)$) ]]; then
@@ -394,10 +407,9 @@ if [[ "run" =~ $(echo ^\(${TASKS}\)$) ]]; then
   cd "${ROOT_FOLDER}/build-emscripten/"
   # emrun doesn't support range requests. Once it will, we don't need node-static anymore
   # emrun --browser=chrome scummvm.html
-  a=127.0.0.1
+  a="127.0.0.1"
   if [[ "$_listen_all_interfaces" = true ]]; then
-    a=0.0.0.0
+    a="0.0.0.0"
   fi
-  EMSDK_NPX=$(dirname $EMSDK_NODE)/npx
-  $EMSDK_NPX -p node-static static -a $a .
+  "$EMSDK_NODE" run.js 
 fi
