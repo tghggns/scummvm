@@ -8,6 +8,12 @@ const fs = require("fs");
 const path = require("path");
 const symLinks = {};
 const ignoreFiles = ['.git', 'node_modules', 'bower_components', 'build', 'index.json'];
+
+var workingDirectory = process.cwd();
+
+const args=process.argv;
+args.indexOf('-d') > -1 ? workingDirectory=args[args.indexOf('-d') + 1] : null;
+
 function rdSync(dpath, tree, name) {
     const files = fs.readdirSync(dpath);
     files.forEach((file) => {
@@ -44,9 +50,9 @@ function rdSync(dpath, tree, name) {
     });
     return tree;
 }
-const fsListing = JSON.stringify(rdSync(process.cwd(), {}, '/'));
-if (process.argv.length === 3) {
-    const fname = process.argv[2];
+const fsListing = JSON.stringify(rdSync(workingDirectory, {}, '/'));
+if (args.indexOf('-out') > -1) {
+    var fname = path.join(workingDirectory, args[args.indexOf('-out') + 1]);
     let parent = path.dirname(fname);
     while (!fs.existsSync(parent)) {
         fs.mkdirSync(parent);

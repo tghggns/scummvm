@@ -36,6 +36,7 @@ TASKS=()
 CONFIGURE_ARGS=()
 _bundle_games=()
 _games_dir=()
+_saves_dir="$ROOT_FOLDER/build-emscripten/saves"
 _listen_all_interfaces=false
 _verbose=false
 EMSCRIPTEN_VERSION=$EMSDK_VERSION
@@ -67,6 +68,11 @@ for i in "$@"; do
   --games-directories=*)
     str="${i#*=}"
     _games_dir="${str//,/ }"
+    shift
+    ;;
+  --saves-directory=*)
+    str="${i#*=}"
+    _saves_dir="${str}"
     shift
     ;;
   --listen-all-interfaces)
@@ -138,6 +144,7 @@ if [[ "setup" =~ $(echo ^\(${TASKS}\)$) || "build" =~ $(echo ^\(${TASKS}\)$) ]];
     "$EMSDK_NPM" -g install "puppeteer@13.5.1"
     "$EMSDK_NPM" -g install "request@2.88.2"
     "$EMSDK_NPM" -g install "node-static@0.7.11"
+    "$EMSDK_NPM" -g install "child_process@1.0.2"
   fi
 fi
 source "$DIST_FOLDER/emsdk-$EMSDK_VERSION/emsdk_env.sh"
@@ -387,17 +394,16 @@ if [[ "add-games" =~ $(echo ^\(${TASKS}\)$) || "build" =~ $(echo ^\(${TASKS}\)$)
 fi
 
 #################################
-# Sync save folder
+# Create server saves folder
 #################################
-# if [[ "run" =~ $(echo ^\(${TASKS}\)$) ]]; then
-#   echo "Sync save files"
-#   if [[ ! -d "${ROOT_FOLDER}/build-emscripten/saves" ]]; then
-#     echo "Saves directory not found, creating"
-#     mkdir -p "${ROOT_FOLDER}/build-emscripten/saves"
-#   fi
-#   cd "${ROOT_FOLDER}/build-emscripten/saves"
-#   "$EMSDK_NODE" "$DIST_FOLDER/build-make_http_index.js" > index.json
-# fi
+if [[ "run" =~ $(echo ^\(${TASKS}\)$) ]]; then
+  if [[ ! -d $_saves_dir ]]; then
+    echo "Saves directory $_saves_dir not found, creating"
+    mkdir -p $_saves_dir
+  fi
+  cd $_saves_dir
+  "$EMSDK_NODE" "$DIST_FOLDER/build-make_http_index.js" > index.json
+fi
 
 #################################
 # Run Development Server
@@ -411,5 +417,5 @@ if [[ "run" =~ $(echo ^\(${TASKS}\)$) ]]; then
   if [[ "$_listen_all_interfaces" = true ]]; then
     a="0.0.0.0"
   fi
-  "$EMSDK_NODE" run.js 
+  "$EMSDK_NODE" run.js -a $a -sP $_saves_dir
 fi
