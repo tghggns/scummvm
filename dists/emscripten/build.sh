@@ -358,6 +358,8 @@ if [[ "dist" =~ $(echo ^\(${TASKS}\)$) || "build" =~ $(echo ^\(${TASKS}\)$) ]]; 
   cp "$DIST_FOLDER/assets/"* "${ROOT_FOLDER}/build-emscripten/"
   cp "$ROOT_FOLDER/gui/themes/common-svg/logo.svg" "${ROOT_FOLDER}/build-emscripten/"
   cp "$ROOT_FOLDER/icons/scummvm.ico" "${ROOT_FOLDER}/build-emscripten/favicon.ico"
+  cp "$DIST_FOLDER/run.js" "${ROOT_FOLDER}/build-emscripten/"
+  cp "$DIST_FOLDER/build-make_http_index.js" "${ROOT_FOLDER}/build-emscripten/"
 fi
 
 #################################
@@ -384,6 +386,18 @@ if [[ "icons" =~ $(echo ^\(${TASKS}\)$) || "build" =~ $(echo ^\(${TASKS}\)$) ]];
 fi
 
 #################################
+# Create server saves folder
+#################################
+if [[ "build" =~ $(echo ^\(${TASKS}\)$) || "add-games" =~ $(echo ^\(${TASKS}\)$) ]]; then
+  if [[ ! -d $_saves_dir ]]; then
+    echo "Saves directory $_saves_dir not found, creating"
+    mkdir -p $_saves_dir
+  fi
+  cd $_saves_dir
+  "$EMSDK_NODE" "$DIST_FOLDER/build-make_http_index.js" > index.json
+fi
+
+#################################
 # Automatically detect games and create scummvm.ini file
 #################################
 if [[ "add-games" =~ $(echo ^\(${TASKS}\)$) || "build" =~ $(echo ^\(${TASKS}\)$) ]]; then
@@ -393,17 +407,6 @@ if [[ "add-games" =~ $(echo ^\(${TASKS}\)$) || "build" =~ $(echo ^\(${TASKS}\)$)
   "$EMSDK_NODE" "$DIST_FOLDER/build-add_games.js"
 fi
 
-#################################
-# Create server saves folder
-#################################
-if [[ "run" =~ $(echo ^\(${TASKS}\)$) ]]; then
-  if [[ ! -d $_saves_dir ]]; then
-    echo "Saves directory $_saves_dir not found, creating"
-    mkdir -p $_saves_dir
-  fi
-  cd $_saves_dir
-  "$EMSDK_NODE" "$DIST_FOLDER/build-make_http_index.js" > index.json
-fi
 
 #################################
 # Run Development Server

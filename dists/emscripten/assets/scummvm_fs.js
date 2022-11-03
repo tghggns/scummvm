@@ -24,7 +24,7 @@ const ERRNO_CODES = {
 };
 
 
-const DEBUG = true
+const DEBUG = false
 
 
 export class ScummvmFS {
@@ -448,31 +448,33 @@ export class ScummvmFS {
             if (length > 0 && this.url === "saves"){ 
                 if(stream.node.contents === undefined){
                     stream.node.contents = new Uint8Array(buffer.slice(offset, offset + length));
+                    var total_length = stream.node.contents.length
+                    stream.node.size = total_length;
                 }
-                else{
+                else if(stream.node.contents !== undefined && length > 0){
                     var total_length = stream.node.contents.length + length;
                     var merged = new Uint8Array(total_length);
                     merged.set(stream.node.contents);
                     merged.set(buffer.slice(offset, offset + length), stream.node.contents.length);
                     stream.node.contents = merged;
                     stream.node.size = total_length;
-                    var name = stream.node.name;
-                    var savFileBytes = stream.node.contents;
-                    var jsonData = new JSON.constructor();
-                    jsonData['file'] = name;
-                    jsonData['data'] = JSON.parse(JSON.stringify(savFileBytes));
-                    jsonData['byteLength'] = total_length;
-                    var xhr = new XMLHttpRequest();
-                    xhr.open('POST', '', false);
-                    xhr.setRequestHeader("Content-Type", "application/json");
-                    xhr.send(JSON.stringify(jsonData));
-                    if (xhr.status === 200){
-                        var resultingArray = new Uint8Array(RANGE_REQUEST_BLOCK_SIZE);
-                        resultingArray.set(savFileBytes);
-                        const path = realPath(stream.node);
-                        this.fs_index[path] = {size: total_length, data: new Array(resultingArray)};
-                        stream.stream_ops.llseek(stream, offset, SEEK_CUR);
-                    }
+                }
+                var name = stream.node.name;
+                var savFileBytes = stream.node.contents;
+                var jsonData = new JSON.constructor();
+                jsonData['file'] = name;
+                jsonData['data'] = JSON.parse(JSON.stringify(savFileBytes));
+                jsonData['byteLength'] = total_length;
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '', false);
+                xhr.setRequestHeader("Content-Type", "application/json");
+                xhr.send(JSON.stringify(jsonData));
+                if (xhr.status === 200){
+                    var resultingArray = new Uint8Array(RANGE_REQUEST_BLOCK_SIZE);
+                    resultingArray.set(savFileBytes);
+                    const path = realPath(stream.node);
+                    this.fs_index[path] = {size: total_length, data: new Array(resultingArray)};
+                    stream.stream_ops.llseek(stream, offset, SEEK_CUR);
                 }
             }
             return length;
