@@ -576,7 +576,7 @@ void DirectorSound::playFPlaySound(const Common::Array<Common::String> &fplayLis
 	for (uint i = 0; i < fplayList.size(); i++)
 		_fplayQueue.push(fplayList[i]);
 
-	// stop the previous sound, because new one is comming
+	// stop the previous sound, because new one is coming
 	if (isChannelActive(1))
 		stopSound(1);
 
@@ -797,8 +797,17 @@ Audio::AudioStream *AudioFileDecoder::getAudioStream(bool looping, bool forPuppe
 	if (_path.empty())
 		return nullptr;
 
-	_macresman->open(Common::Path(pathMakeRelative(_path), g_director->_dirSeparator));
-	Common::SeekableReadStream *file = _macresman->getDataFork();
+	Common::Path filePath = Common::Path(pathMakeRelative(_path), g_director->_dirSeparator);
+	Common::SeekableReadStream *file = nullptr;
+
+	if (_macresman->open(filePath)) {
+		// Data has to be copied out instead of using the stream from
+		// getDataFork() directly because it's possible for this audio
+		// to outlive the owning MacResMan, which would otherwise free
+		// the stream while it's still being read from.
+		Common::SeekableReadStream *stream = _macresman->getDataFork();
+		file = stream->readStream(stream->size());
+	}
 
 	if (file == nullptr) {
 		warning("Failed to open %s", _path.c_str());

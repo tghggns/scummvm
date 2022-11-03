@@ -1205,7 +1205,7 @@ void Script::o_inputloopend() {
 		}
 		_vm->_grvCursorMan->show(true);
 
-		// Go back to the begining of the loop
+		// Go back to the beginning of the loop
 		_currentInstruction = _inputLoopAddress;
 
 		// There's nothing to do until we get some input
@@ -2193,7 +2193,7 @@ void Script::o2_videofromref() {
 	// Skip the 11th Hour intro videos on right mouse click, instead of
 	// fast-forwarding them. This has the same effect as pressing 'p' twice in
 	// the skulls screen after the Groovie logo
-	if (_version == kGroovieT11H && _currentInstruction == 0x0560 && fileref != _videoRef)
+	if (_version == kGroovieT11H && _currentInstruction == 0x0560 && fileref != _videoRef && _scriptFile == "script.grv")
 		_videoSkipAddress = 1417;
 
 	if (_version == kGroovieT11H && fileref != _videoRef && !ConfMan.getBool("originalsaveload")) {

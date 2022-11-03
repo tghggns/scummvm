@@ -1081,6 +1081,15 @@ void ImageElement::render(Window *window) {
 		Common::Rect srcRect(optimized->w, optimized->h);
 		Common::Rect destRect(_cachedAbsoluteOrigin.x, _cachedAbsoluteOrigin.y, _cachedAbsoluteOrigin.x + _rect.width(), _cachedAbsoluteOrigin.y + _rect.height());
 
+		if (optimized->format.bytesPerPixel == 1) {
+			const Palette *palette = getPalette().get();
+			if (!palette)
+				palette = &_runtime->getGlobalPalette();
+
+			// FIXME: Pass palette to blit functions instead
+			optimized->setPalette(palette->getPalette(), 0, 256);
+		}
+
 		uint8 alpha = _transitionProps.getAlpha();
 
 		if (inkMode == VisualElementRenderProperties::kInkModeBackgroundMatte || inkMode == VisualElementRenderProperties::kInkModeBackgroundTransparent) {
@@ -1148,6 +1157,9 @@ bool MToonElement::readAttribute(MiniscriptThread *thread, DynamicValue &result,
 			result.setInt(_cachedMToon->getMetadata()->frames.size());
 		else
 			result.setInt(0);
+		return true;
+	} else if (attrib == "regpoint") {
+		result.setPoint(_cachedMToon->getMetadata()->registrationPoint);
 		return true;
 	}
 
@@ -1238,13 +1250,21 @@ bool MToonElement::canAutoPlay() const {
 
 void MToonElement::render(Window *window) {
 	if (_cachedMToon) {
-
 		_cachedMToon->optimize(_runtime);
 
 		uint32 frame = _cel - 1;
 		assert(frame < _metadata->frames.size());
 
 		_cachedMToon->getOrRenderFrame(_renderedFrame, frame, _renderSurface);
+
+		if (_renderSurface->format.bytesPerPixel == 1) {
+			const Palette *palette = getPalette().get();
+			if (!palette)
+				palette = &_runtime->getGlobalPalette();
+
+			// FIXME: Should support passing the palette to the blit function instead
+			_renderSurface->setPalette(palette->getPalette(), 0, 256);
+		}
 
 		_renderedFrame = frame;
 
@@ -1327,6 +1347,17 @@ Common::Rect MToonElement::getRelativeCollisionRect() const {
 	colRect.translate(_rect.left, _rect.top);
 	return colRect;
 }
+#ifdef MTROPOLIS_DEBUG_ENABLE
+void MToonElement::debugInspect(IDebugInspectionReport *report) const {
+	VisualElement::debugInspect(report);
+
+	report->declareDynamic("cel", Common::String::format("%i", static_cast<int>(_cel)));
+	report->declareDynamic("assetID", Common::String::format("%i", static_cast<int>(_assetID)));
+	report->declareDynamic("isPlaying", Common::String::format("%s", _isPlaying ? "true" : "false"));
+	report->declareDynamic("renderedFrame", Common::String::format("%i", static_cast<int>(_renderedFrame)));
+	report->declareDynamic("playRange", Common::String::format("%i-%i", static_cast<int>(_playRange.min), static_cast<int>(_playRange.max)));
+}
+#endif
 
 VThreadState MToonElement::startPlayingTask(const StartPlayingTaskData &taskData) {
 	if (_rateTimes100000 < 0)
@@ -1459,7 +1490,7 @@ void MToonElement::playMedia(Runtime *runtime, Project *project) {
 			runtime->queueMessage(dispatch);
 		}
 
-		if (_maintainRate)
+		if (_maintainRate && !runtime->getHacks().ignoreMToonMaintainRateFlag)
 			_celStartTimeMSec = playTime;
 		else
 			_celStartTimeMSec += (static_cast<uint64>(100000000) * framesAdvanced) / absRateTimes100000;
@@ -2146,14 +2177,14 @@ void SoundElement::playMedia(Runtime *runtime, Project *project) {
 				uint64 oldTimeRelative = _cueCheckTime - _startTime + _startTimestamp;
 				uint64 newTimeRelative = newTime - _startTime + _startTimestamp;
 
-				_cueCheckTime = newTime;
-
 				if (_subtitlePlayer)
 					_subtitlePlayer->update(oldTimeRelative, newTimeRelative);
 
-				// TODO: Check cue points and queue them here
-			}
+				for (MediaCueState *mediaCue : _mediaCues)
+					mediaCue->checkTimestampChange(runtime, oldTimeRelative * _metadata->sampleRate / 1000u, newTimeRelative * _metadata->sampleRate / 1000u, true, true);
 
+				_cueCheckTime = newTime;
+			}
 
 			if (!_loop && newTime >= _finishTime) {
 				// Don't throw out the handle - It can still be playing but we just treat it like it's not.
@@ -2174,6 +2205,19 @@ void SoundElement::playMedia(Runtime *runtime, Project *project) {
 		// Goal state is stopped
 		stopPlayer();
 	}
+}
+
+bool SoundElement::resolveMediaMarkerLabel(const Label &label, int32 &outResolution) const {
+	if (_metadata) {
+		for (const AudioMetadata::CuePoint &cuePoint : _metadata->cuePoints) {
+			if (cuePoint.cuePointID == label.id) {
+				outResolution = cuePoint.position;
+				return true;
+			}
+		}
+	}
+
+	return false;
 }
 
 void SoundElement::stopPlayer() {
