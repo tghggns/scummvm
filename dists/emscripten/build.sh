@@ -36,7 +36,6 @@ TASKS=()
 CONFIGURE_ARGS=()
 _bundle_games=()
 _games_dir=()
-_saves_dir="$ROOT_FOLDER/build-emscripten/saves"
 _listen_all_interfaces=false
 _verbose=false
 EMSCRIPTEN_VERSION=$EMSDK_VERSION
@@ -68,11 +67,6 @@ for i in "$@"; do
   --games-directories=*)
     str="${i#*=}"
     _games_dir="${str//,/ }"
-    shift
-    ;;
-  --saves-directory=*)
-    str="${i#*=}"
-    _saves_dir="${str}"
     shift
     ;;
   --listen-all-interfaces)
@@ -388,7 +382,9 @@ fi
 #################################
 # Create server saves folder
 #################################
-if [[ "build" =~ $(echo ^\(${TASKS}\)$) || "add-games" =~ $(echo ^\(${TASKS}\)$) ]]; then
+if [[ "build" =~ $(echo ^\(${TASKS}\)$) || "add-games" =~ $(echo ^\(${TASKS}\)$) || "run" =~ $(echo ^\(${TASKS}\)$) ]]; then
+  cd "${ROOT_FOLDER}/build-emscripten/"
+  _saves_dir="${ROOT_FOLDER}/build-emscripten$(awk -F "=" '/savepath/ {print $2}' scummvm.ini)"
   if [[ ! -d $_saves_dir ]]; then
     echo "Saves directory $_saves_dir not found, creating"
     mkdir -p $_saves_dir
@@ -420,5 +416,5 @@ if [[ "run" =~ $(echo ^\(${TASKS}\)$) ]]; then
   if [[ "$_listen_all_interfaces" = true ]]; then
     a="0.0.0.0"
   fi
-  "$EMSDK_NODE" run.js -a $a -sP $_saves_dir
+  "$EMSDK_NODE" run.js -a $a
 fi

@@ -8,14 +8,14 @@ const buildIndexScript = path.join('', 'build-make_http_index.js');
 var address = "127.0.0.1";
 var directory = '.';
 var port = 8080;
-var savePath = './saves';
+var savePath = '.' + child_process.execSync("echo $(awk -F \"=\" '/savepath/ {print $2}' scummvm.ini)").toString().trim();
+
 const buildIndexArgs = ['-d', savePath, '-out', 'index.json'];
 
 args=process.argv;
 args.indexOf('-p') > -1 ? port=args[args.indexOf('-p') + 1] : null;
 args.indexOf('-a') > -1 ? address=args[args.indexOf('-a') + 1] : null;
 args.indexOf('-d') > -1 ? directory=args[args.indexOf('-d') + 1] : null;
-args.indexOf('-sP') > -1 ? savePath=args[args.indexOf('-sP') + 1] : null;
 
 var fileServer = new static.Server(directory);
 

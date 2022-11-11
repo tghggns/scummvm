@@ -22,7 +22,8 @@ const ERRNO_CODES = {
     ENOENT: 2, // No such file or directory
     EINVAL: 22 // I©nvalid argument
 };
-
+var GLOBAL_SAVE_PATH = "";
+await getSavePathFromIni();
 
 const DEBUG = false
 
@@ -319,12 +320,12 @@ export class ScummvmFS {
             const path = realPath(parent, name);
             const result = this.get({ path });
             if (!result.ok) {
-                // I wish Javascript had inner exceptions
-                if(this.url !== "saves"){
-                    throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
-                }
-                else{
+                if(this.url === GLOBAL_SAVE_PATH){
                     return this.createNode(parent, name, FILE_MODE, null);
+                }
+                // I wish Javascript had inner exceptions
+                else{
+                    throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
                 }
             }
             return this.createNode(parent, name, result.data === null ? DIR_MODE : FILE_MODE, result.data ? result.size : null);
@@ -445,7 +446,7 @@ export class ScummvmFS {
 
         write: (stream, buffer, offset, length, position) => {
             //throw new FS.ErrnoError(ERRNO_CODES.EPERM);
-            if (length > 0 && this.url === "saves"){ 
+            if (length > 0 && this.url === GLOBAL_SAVE_PATH){ 
                 if(stream.node.contents === undefined){
                     stream.node.contents = new Uint8Array(buffer.slice(offset, offset + length));
                     var total_length = stream.node.contents.length
@@ -529,4 +530,14 @@ function Uint8Array2hex(byteArray) {
     return Array.prototype.map.call(byteArray, function (byte) {
         return ('0' + (byte & 0xFF).toString(16)).slice(-2).toUpperCase();
     }).join(' ');
+}
+
+async function getSavePathFromIni(){
+    fetch("scummvm.ini").then((response) => {
+        response.text().then(function (text) {
+            var regexSaveIni = /savepath=(.*)/;
+            var savesLocation = regexSaveIni.exec(text)[1];
+            GLOBAL_SAVE_PATH = savesLocation;
+        });
+    });
 }

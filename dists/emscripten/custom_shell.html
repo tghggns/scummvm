@@ -138,6 +138,7 @@
 
     var statusElement = document.getElementById('status');
     var progressElement = document.getElementById('progress');
+    var saveLocation = "";
 
     function loadingDoneMessage() {
       document.getElementById("progress").style.zIndex = 0;
@@ -210,6 +211,9 @@
             //var req = new XMLHttpRequest(); // a new request
             //req.open("GET", , false);
             //req.send(null);
+            var regexSaveIni = /savepath=(.*)/;
+            saveLocation = regexSaveIni.exec(text)[1];
+            
             ini_data = btoa(text)
 
             folder_inode_id = "b3da6754-64c0-40f0-92ad-83b6ca6ffec9"
@@ -273,7 +277,7 @@
         setupHTTPFilesystem("games")
         setupHTTPFilesystem("plugins")
         setupHTTPFilesystem("data")
-        setupHTTPFilesystem("saves")
+        setupHTTPFilesystem(saveLocation) 
         
         removeRunDependency('scummvm-fs-setup');
       });
