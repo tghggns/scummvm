@@ -266,7 +266,6 @@
       });
     }
     function setupHTTPFilesystem(folder_name) {
-
       FS.mkdir("/" + folder_name)
       FS.mount(new ScummvmFS(FS, folder_name), {}, "/" + folder_name + "/");
     }

@@ -23,7 +23,7 @@ const ERRNO_CODES = {
     EINVAL: 22 // I©nvalid argument
 };
 var GLOBAL_SAVE_PATH = "";
-await getSavePathFromIni();
+getSavePathFromIni();
 
 const DEBUG = false
 
@@ -74,8 +74,11 @@ export class ScummvmFS {
         return { ok: true, data: result };
     }
 
-    // used for open
     get(_path) {
+        //update save files
+        if(this.url === GLOBAL_SAVE_PATH){
+            alert("NEED TO UPDATE SAVES");
+        }
         const path = _path.path
         logger(path, "get")
         if (path in this.fs_index) {
@@ -285,6 +288,7 @@ export class ScummvmFS {
         }
     }
 
+    
     node_ops = {
         getattr: (node) => {
             return {
@@ -387,6 +391,26 @@ export class ScummvmFS {
     stream_ops = {
         open: (stream) => {
             logger(stream.path, "Open stream ")
+            if (stream.path === GLOBAL_SAVE_PATH) {
+                var req = new XMLHttpRequest();
+                req.open("GET", GLOBAL_SAVE_PATH + "/index.json?" + Date.now(), false);
+                req.send(null);
+                
+                var json_index = JSON.parse(req.responseText)
+                
+                for (var key in json_index){
+                    if (this.fs_index['/' + key] === undefined){
+                        this.fs_index['/' + key] = json_index[key];
+                        this.get({ path: '/' + key });
+                        var sfData = this.read({ path: '/' + key, start: 0, end: json_index[key] }).data;
+                        this.put({ path: '/' + key, value: sfData});
+                    }
+                    else if(this.fs_index['/' + key] !== json_index[key]){
+                        this.fs_index['/' + key] = json_index[key];
+                        // exists but has been updated on server
+                    }
+                }
+            }
             const path = realPath(stream.node);
             if (FS.isFile(stream.node.mode)) {
                 const result = this.get({ path });
@@ -502,8 +526,6 @@ export class ScummvmFS {
             return position;
         }
     }
-
-
 }
 
 function realPath(node, fileName) {
@@ -532,7 +554,7 @@ function Uint8Array2hex(byteArray) {
     }).join(' ');
 }
 
-async function getSavePathFromIni(){
+function getSavePathFromIni(){
     fetch("scummvm.ini").then((response) => {
         response.text().then(function (text) {
             var regexSaveIni = /savepath=(.*)/;
@@ -541,3 +563,4 @@ async function getSavePathFromIni(){
         });
     });
 }
+
